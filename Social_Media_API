@@ -1,0 +1,94 @@
+import requests
+import json
+import csv
+from typing import Dict, List, Any
+
+class SocialMediaAPI:
+    def __init__(self, base_url: str, auth_token: str):
+        """
+        Initialize the SocialMediaAPI with the base URL and authentication token.
+        """
+        self.base_url = base_url
+        self.headers = {
+            "Authorization": f"Bearer {auth_token}",
+            "Content-Type": "application/json"
+        }
+
+    def get_request(self, endpoint: str, params: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """
+        Make a GET request to the API and handle pagination.
+        """
+        results = []
+        while endpoint:
+            print(f"Requesting: {endpoint} with params {params}")
+            response = requests.get(f"{self.base_url}{endpoint}", headers=self.headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Append the current page results
+            results.extend(data.get("items", []))
+            
+            # Update endpoint with the next page token if it exists
+            endpoint = data.get("next_page_token")
+
+        return results
+
+    def post_request(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Make a POST request to the API.
+        """
+        print(f"Posting to: {endpoint} with payload {payload}")
+        response = requests.post(f"{self.base_url}{endpoint}", headers=self.headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def put_request(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Make a PUT request to the API.
+        """
+        print(f"Putting to: {endpoint} with payload {payload}")
+        response = requests.put(f"{self.base_url}{endpoint}", headers=self.headers, json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def delete_request(self, endpoint: str) -> Dict[str, Any]:
+        """
+        Make a DELETE request to the API.
+        """
+        print(f"Deleting: {endpoint}")
+        response = requests.delete(f"{self.base_url}{endpoint}", headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+    def save_to_csv(self, data: List[Dict[str, Any]], output_file: str, fields: List[str]):
+        """
+        Save a list of dictionaries to a CSV file.
+        """
+        print(f"Saving data to {output_file}")
+        with open(output_file, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(data)
+
+
+# Usage
+if __name__ == "__main__":
+    BASE_URL = "https://api.example.com"
+    AUTH_TOKEN = "your_api_token_here"
+    
+    # Initialize the API client
+    api_client = SocialMediaAPI(BASE_URL, AUTH_TOKEN)
+
+    # Example: Retrieve data using a GET request
+    try:
+        endpoint = "/data"
+        params = {"param1": "value1", "param2": "value2"}
+        data = api_client.get_request(endpoint, params)
+        
+        # Define the fields to save in the CSV
+        fields = ["field1", "field2", "field3"]
+        
+        # Save data to CSV
+        api_client.save_to_csv(data, "output.csv", fields)
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
